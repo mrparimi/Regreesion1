@@ -1,0 +1,100 @@
+---
+title: "Regression_basics"
+author: "Mastan Rao Parimi"
+date: "March 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+ 
+#Data 
+```{r}
+hwdf <- read.csv(file = "HvsW.csv")
+hwdf <- hwdf[,-1]
+hwdf$Height.cm <- hwdf$Height.Inches.*2.54
+hwdf$Weight.kg <- hwdf$Weight.Pounds.*0.45592
+hwdf <- hwdf[,-c(1,2)]
+print(paste("the total number of na is",sum(is.na(hwdf))))
+```
+#Libraries required
+```{r}
+library(akima)
+library(rgl)
+```
+#summary of the data
+```{r}
+summary(hwdf)
+boxplot(hwdf)
+plot(hwdf)
+```
+#all the utility Functions
+```{r}
+getlinedata <- function(m,c){
+  x <- c(1,1000)
+  y <- c(yofx(m,c,1),yofx(m,c,1000))
+  list(x=x,y=y)
+}
+yofx <- function(m,c,x){
+  y = m*x+c
+}
+costplot <- function(m,c,xvals,yvals){
+  i <- 1
+  error <- 0
+  for (xval in xvals) {
+    error <- error + (yofx(m,c,xval)-yvals[i])^2
+    i <- i+1
+  }
+  error <- error/length(xvals)
+  error <- log10(error)
+}
+cost <- function(m,c,xvals,yvals){
+  i <- 1
+  error <- 0
+  for (xval in xvals) {
+  error <- error + (yofx(m,c,xval)-yvals[i])^2
+  i <- i+1
+  }
+  error <- error/length(xvals)
+}
+```
+# demonstration to see the cost function curve in the three dimensional space.
+```{r}
+mspace <- seq(-5,5,length.out = 100)
+cspace <- seq(-10,10,length.out = 100)
+i <- 1
+zspace <- c()
+for (mval in mspace) {
+  for (cval in cspace) {
+    zspace <- c(zspace,costplot(mval,cval,hwdf$Height.cm,hwdf$Weight.kg))
+  }
+}
+zspacemat <- matrix(zspace,nrow = length(cspace),ncol = length(mspace))
+zlim <- range(cspace)
+zlen <- zlim[2]-zlim[1]+1
+colorlut <- terrain.colors(zlen)
+col <- colorlut[zspacemat-zlim[1]+1]
+open3d()
+
+##wgl
+##  1
+surface3d(mspace,cspace,zspacemat,color=col,back='lines')
+
+#Gradient descent
+slope=1000
+mval=5
+cval=10
+alpha=.00002
+i=1
+while (abs(slope)>0.0001 & i < 25000) {
+slope_C = (cost(mval,cval+0.001,hwdf$Height.cm,hwdf$Weight.kg) - cost(mval,cval,hwdf$Height.cm,hwdf$Weight.kg))
+slope_m = (cost(mval+0.001,cval,hwdf$Height.cm,hwdf$Weight.kg) - cost(mval,cval,hwdf$Height.cm,hwdf$Weight.kg))
+mval = mval - alpha*slope_m
+cval = cval - alpha*slope_C
+slope = max(slope_m,slope_C)
+i <- i+1
+}
+plot(hwdf)
+abline(cval,mval)
+```
